@@ -120,7 +120,7 @@ export default function History() {
                                         <Button 
                                             variant="contained" 
                                             fullWidth 
-                                            onClick={() => navigate(`/${e.meetingCode}`)}
+                                            onClick={() => navigate(`meet/${e.meetingCode}`)}
                                             sx={{ 
                                                 background: 'white', 
                                                 color: 'black', 
