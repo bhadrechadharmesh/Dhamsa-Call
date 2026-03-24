@@ -1,4 +1,4 @@
-# Zoom Clone Web Application
+# Video conferencing Web Application
 
 A full-stack video conferencing application built using the MERN stack (MongoDB, Express.js, React, Node.js) and WebRTC / Socket.io for real-time video and audio communication.
 
