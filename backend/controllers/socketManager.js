@@ -4,103 +4,106 @@ let connections = {}
 let messages = {}
 let timeOnline = {}
 
-export const connectToSocket = (server) =>{
-    const io = new Server(server,{
-        cors:{
-            origin:"*",
-            methods:["GET","POST"],
-            allowedHeaders:["*"],
-            credentials:true
+export const connectToSocket = (server) => {
+    const io = new Server(server, {
+        cors: {
+            origin: process.env.CORS_ORIGIN || "*",
+            methods: ["GET", "POST"],
+            allowedHeaders: ["*"],
+            credentials: true
         }
     });
 
-    io.on("connection",(socket)=>{
+    io.on("connection", (socket) => {
 
-        socket.on("join-call",(path)=>{
-            
-            if(connections[path] == undefined){
+        socket.on("join-call", (path) => {
+
+            if (connections[path] === undefined) {
                 connections[path] = []
             }
             connections[path].push(socket.id)
 
             timeOnline[socket.id] = new Date();
 
-            // connections[path].forEach((ele)=>{
-            //     io.to(ele)
-            // })
-
-            for(let a = 0;a<connections[path].length;a++){
-                io.to(connections[path][a]).emit("user-joined",socket.id,connections[path])
+            // Notify all users in the room about the new join
+            for (let i = 0; i < connections[path].length; i++) {
+                io.to(connections[path][i]).emit("user-joined", socket.id, connections[path])
             }
 
-            if(messages[path]!= undefined){
-                for(let a=0;a<messages[path].length;a++){
-                    io.to(socket.id).emit("chat-message",messages[path][a]['data'],
-                        messages[path][a]['sender'],messages[path][a]['socket-id-sender'])
+            // Send existing chat history to the new joiner
+            if (messages[path] !== undefined) {
+                for (let i = 0; i < messages[path].length; i++) {
+                    io.to(socket.id).emit("chat-message",
+                        messages[path][i]['data'],
+                        messages[path][i]['sender'],
+                        messages[path][i]['socket-id-sender']
+                    )
                 }
             }
-            
+
         })
 
-        socket.on("signal",(toId,message)=>{
-            io.to(toId).emit("signal",socket.id,message);
+        socket.on("signal", (toId, message) => {
+            io.to(toId).emit("signal", socket.id, message);
         })
 
-        socket.on("chat-message",(data,sender)=>{
+        socket.on("chat-message", (data, sender) => {
+            // Find which room this socket belongs to
+            let matchingRoom = '';
+            let found = false;
 
-            const [matchingRoom,found] = Object.entries(connections)
-            .reduce(([room,isFound],[roomKey,roomValue])=>{
-                if(!isFound && roomValue.includes(socket.id)){
-                    return [roomKey,true];
+            for (const [roomKey, roomValue] of Object.entries(connections)) {
+                if (roomValue.includes(socket.id)) {
+                    matchingRoom = roomKey;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (found) {
+                if (messages[matchingRoom] === undefined) {
+                    messages[matchingRoom] = []
                 }
 
-                return [room,isFound];
-                
-            },['',false]);
+                messages[matchingRoom].push({
+                    'sender': sender,
+                    'data': data,
+                    'socket-id-sender': socket.id
+                })
 
-            if(found == true){
-                if(messages[matchingRoom] == undefined){
-                    messages[matchingRoom]=[]
-                }
-
-                messages[matchingRoom].push({'sender':sender,"data":data , "socket-id-sender":socket.id })
-                console.log("message",matchingRoom,":","sender",data);
-
-                connections[matchingRoom].forEach((ele)=>{
-                    io.to(ele).emit("chat-message",data,sender,socket.id)
+                // Broadcast to all users in the room
+                connections[matchingRoom].forEach((ele) => {
+                    io.to(ele).emit("chat-message", data, sender, socket.id)
                 })
             }
         })
 
-        socket.on("disconnect",()=>{
-            var diffTime = Math.abs(timeOnline[socket.id] - new Date())
+        socket.on("disconnect", () => {
+            // Find and remove the socket from all rooms
+            for (const [roomKey, roomValue] of Object.entries(connections)) {
+                const index = roomValue.indexOf(socket.id);
 
-            var key;
+                if (index !== -1) {
+                    // Notify remaining users in this room
+                    for (let j = 0; j < connections[roomKey].length; j++) {
+                        io.to(connections[roomKey][j]).emit('user-left', socket.id)
+                    }
 
-            for(const [k,v] of JSON.parse(JSON.stringify(Object.entries(connections)))){
+                    // Remove socket from the room
+                    connections[roomKey].splice(index, 1);
 
-                for(let a = 0 ; a<v.length; a++){
-                    if(v[a]==socket.id){
-                        key = k;
-
-                        for(let a=0;a<connections[key].length;a++){
-                            io.to(connections[key][a]).emit('user-left',socket.id)
-                        }
-
-                        var index = connections[key].indexOf(socket.id);
-
-                        connections[key].splice(index,1);
-
-                        if(connections[key].length == 0){
-                            delete connections[key]
-                        }
+                    // Clean up empty rooms and their messages
+                    if (connections[roomKey].length === 0) {
+                        delete connections[roomKey]
+                        delete messages[roomKey]
                     }
                 }
-
             }
+
+            // Clean up online time tracking
+            delete timeOnline[socket.id]
         })
     })
 
     return io;
 }
-

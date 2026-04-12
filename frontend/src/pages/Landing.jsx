@@ -1,311 +1,349 @@
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-    Box, Button, Container, Typography, Grid, Paper, IconButton, 
-    CssBaseline, useMediaQuery 
+    Box, Button, Container, Typography, Grid, IconButton, Paper
 } from '@mui/material';
-import { styled, keyframes, ThemeProvider, createTheme } from '@mui/material/styles';
+import { styled, keyframes, useTheme } from '@mui/material/styles';
+import { useThemeContext } from '../contexts/ThemeContext';
 
 // Icons
-import VideoCallIcon from '@mui/icons-material/VideoCall';
+import VideocamIcon from '@mui/icons-material/Videocam';
 import SecurityIcon from '@mui/icons-material/Security';
 import SpeedIcon from '@mui/icons-material/Speed';
 import DevicesIcon from '@mui/icons-material/Devices';
-import Brightness4Icon from '@mui/icons-material/Brightness4'; // Moon
-import Brightness7Icon from '@mui/icons-material/Brightness7'; // Sun
+import GroupsIcon from '@mui/icons-material/Groups';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import LightModeIcon from '@mui/icons-material/LightMode';
 
 // --- ANIMATIONS ---
 const float = keyframes`
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-20px); }
-  100% { transform: translateY(0px); }
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33% { transform: translateY(-12px) rotate(1deg); }
+  66% { transform: translateY(-6px) rotate(-1deg); }
 `;
 
-const fadeIn = keyframes`
-  from { opacity: 0; transform: translateY(20px); }
+const pulse = keyframes`
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+`;
+
+const fadeUp = keyframes`
+  from { opacity: 0; transform: translateY(30px); }
   to { opacity: 1; transform: translateY(0); }
 `;
 
-// --- STYLED COMPONENTS ---
+const shimmer = keyframes`
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+`;
 
+// --- STYLED COMPONENTS ---
 const PageWrapper = styled('div')(({ theme }) => ({
     minHeight: '100vh',
     width: '100%',
-    // Dynamic background based on mode
-    background: theme.palette.mode === 'dark' 
-        ? '#0d0d11' 
-        : '#f0f2f5', 
+    background: theme.palette.background.default,
     color: theme.palette.text.primary,
     display: 'flex',
     flexDirection: 'column',
     overflowX: 'hidden',
     position: 'relative',
-    transition: 'background 0.3s ease, color 0.3s ease',
-    
-    // Background Orbs (Glow effects)
-    '&::before': {
-        content: '""',
-        position: 'absolute',
-        top: '-10%',
-        right: '-10%',
-        width: '600px',
-        height: '600px',
-        background: theme.palette.mode === 'dark' 
-            ? 'radial-gradient(circle, rgba(255, 106, 136, 0.15) 0%, rgba(0,0,0,0) 70%)'
-            : 'radial-gradient(circle, rgba(255, 106, 136, 0.1) 0%, rgba(0,0,0,0) 60%)',
-        borderRadius: '50%',
-        zIndex: 0,
-        pointerEvents: 'none',
-    },
-    '&::after': {
-        content: '""',
-        position: 'absolute',
-        bottom: '10%',
-        left: '-10%',
-        width: '500px',
-        height: '500px',
-        background: theme.palette.mode === 'dark'
-            ? 'radial-gradient(circle, rgba(100, 100, 255, 0.1) 0%, rgba(0,0,0,0) 70%)'
-            : 'radial-gradient(circle, rgba(100, 100, 255, 0.08) 0%, rgba(0,0,0,0) 60%)',
-        borderRadius: '50%',
-        zIndex: 0,
-        pointerEvents: 'none',
-    }
+}));
+
+const GlowOrb = styled('div')(({ size, top, left, right, color, delay }) => ({
+    position: 'absolute',
+    width: size || '500px',
+    height: size || '500px',
+    borderRadius: '50%',
+    background: `radial-gradient(circle, ${color || 'rgba(99,102,241,0.12)'} 0%, transparent 70%)`,
+    top: top || 'auto',
+    left: left || 'auto',
+    right: right || 'auto',
+    pointerEvents: 'none',
+    zIndex: 0,
+    animation: `${pulse} 8s ease-in-out infinite`,
+    animationDelay: delay || '0s',
+    filter: 'blur(40px)',
 }));
 
 const Navbar = styled('nav')(({ theme }) => ({
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '20px 40px',
+    padding: '16px 40px',
     zIndex: 10,
-    backdropFilter: 'blur(12px)',
+    backdropFilter: 'blur(20px)',
     position: 'sticky',
     top: 0,
-    // Dynamic Glass Effect
-    background: theme.palette.mode === 'dark' 
-        ? 'rgba(13, 13, 17, 0.7)' 
-        : 'rgba(255, 255, 255, 0.7)',
+    background: theme.palette.mode === 'dark'
+        ? 'rgba(10, 14, 26, 0.8)'
+        : 'rgba(240, 242, 248, 0.8)',
     borderBottom: `1px solid ${theme.palette.divider}`,
-    transition: 'background 0.3s ease, border-color 0.3s ease',
+    '@media (max-width: 600px)': {
+        padding: '12px 20px',
+    }
 }));
 
-const Logo = styled('div')({
-    fontSize: '1.5rem',
-    fontWeight: '800',
-    background: 'linear-gradient(45deg, #FF9A8B, #FF6A88)',
+const Logo = styled('div')(({ theme }) => ({
+    fontSize: '1.4rem',
+    fontWeight: 800,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    cursor: 'pointer',
+    background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
-    cursor: 'pointer',
+}));
+
+const HeroSection = styled('div')({
     display: 'flex',
     alignItems: 'center',
-    gap: '10px'
-});
-
-const HeroSection = styled(Container)({
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: '60px',
-    paddingBottom: '80px',
-    zIndex: 1,
-    minHeight: '80vh',
-    '@media (max-width: 900px)': {
-        flexDirection: 'column',
-        textAlign: 'center',
-        justifyContent: 'center',
-        gap: '40px'
-    }
-});
-
-const HeroText = styled('div')({
-    flex: 1,
-    animation: `${fadeIn} 1s ease-out`,
-});
-
-const HeroImageWrapper = styled('div')({
-    flex: 1,
-    display: 'flex',
     justifyContent: 'center',
-    alignItems: 'center',
-    animation: `${fadeIn} 1s ease-out 0.3s backwards`,
+    minHeight: '85vh',
+    position: 'relative',
+    zIndex: 1,
+    padding: '40px 20px',
 });
 
-const FloatingImage = styled('img')({
-    width: '100%',
-    maxWidth: '500px',
-    height: 'auto',
-    borderRadius: '24px',
-    animation: `${float} 6s ease-in-out infinite`,
-    boxShadow: '0 20px 80px rgba(0,0,0,0.15)',
+const HeroContent = styled('div')({
+    textAlign: 'center',
+    maxWidth: '800px',
+    animation: `${fadeUp} 0.8s ease-out`,
 });
+
+const GradientText = styled('span')({
+    background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 50%, #6366f1 100%)',
+    backgroundSize: '200% auto',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    animation: `${shimmer} 4s linear infinite`,
+});
+
+const MeshSphere = styled('div')(({ theme }) => ({
+    width: '350px',
+    height: '350px',
+    borderRadius: '50%',
+    background: theme.palette.mode === 'dark'
+        ? 'radial-gradient(circle at 30% 30%, rgba(99,102,241,0.3), rgba(6,182,212,0.15), rgba(99,102,241,0.05))'
+        : 'radial-gradient(circle at 30% 30%, rgba(99,102,241,0.2), rgba(6,182,212,0.1), rgba(99,102,241,0.03))',
+    position: 'absolute',
+    right: '-80px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    animation: `${float} 8s ease-in-out infinite`,
+    filter: 'blur(1px)',
+    border: theme.palette.mode === 'dark'
+        ? '1px solid rgba(99,102,241,0.15)'
+        : '1px solid rgba(99,102,241,0.1)',
+    '@media (max-width: 900px)': {
+        display: 'none',
+    },
+}));
 
 const FeatureCard = styled(Paper)(({ theme }) => ({
-    padding: '30px',
-    // Card Background adapts to mode
-    background: theme.palette.mode === 'dark' 
-        ? 'rgba(255, 255, 255, 0.03)' 
-        : 'rgba(255, 255, 255, 0.6)',
-    backdropFilter: 'blur(10px)',
+    padding: '32px 28px',
+    borderRadius: '20px',
+    background: theme.palette.mode === 'dark'
+        ? 'rgba(17, 24, 39, 0.6)'
+        : 'rgba(255, 255, 255, 0.7)',
+    backdropFilter: 'blur(12px)',
     border: `1px solid ${theme.palette.divider}`,
-    borderRadius: '24px',
-    color: theme.palette.text.primary,
-    textAlign: 'center',
-    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-    boxShadow: theme.shadows[1],
+    transition: 'all 0.35s cubic-bezier(0.4,0,0.2,1)',
+    cursor: 'default',
     '&:hover': {
-        transform: 'translateY(-10px)',
-        boxShadow: theme.shadows[10],
-        borderColor: '#FF6A88',
+        transform: 'translateY(-6px)',
+        borderColor: 'rgba(99,102,241,0.3)',
+        boxShadow: theme.palette.mode === 'dark'
+            ? '0 20px 40px rgba(0,0,0,0.3), 0 0 30px rgba(99,102,241,0.08)'
+            : '0 20px 40px rgba(0,0,0,0.08), 0 0 30px rgba(99,102,241,0.06)',
     }
 }));
 
-const GradientButton = styled(Button)({
-    background: 'linear-gradient(45deg, #FF9A8B 30%, #FF6A88 90%)',
-    borderRadius: '50px',
-    padding: '12px 36px',
-    fontSize: '1.1rem',
-    fontWeight: 600,
-    textTransform: 'none',
-    boxShadow: '0 4px 20px rgba(255, 106, 136, 0.4)',
-    color: 'white',
-    '&:hover': {
-        background: 'linear-gradient(45deg, #FF6A88 30%, #FF99AC 90%)',
-        boxShadow: '0 6px 25px rgba(255, 106, 136, 0.6)',
-    }
-});
+const IconBox = styled('div')(({ gradient }) => ({
+    width: '48px',
+    height: '48px',
+    borderRadius: '14px',
+    background: gradient || 'linear-gradient(135deg, #6366f1, #06b6d4)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '16px',
+    boxShadow: '0 4px 12px rgba(99,102,241,0.25)',
+}));
+
+const StatsBar = styled('div')(({ theme }) => ({
+    display: 'flex',
+    gap: '48px',
+    justifyContent: 'center',
+    marginTop: '48px',
+    flexWrap: 'wrap',
+    animation: `${fadeUp} 0.8s ease-out 0.4s backwards`,
+    '@media (max-width: 600px)': {
+        gap: '24px',
+    },
+}));
+
+const StatItem = styled('div')(({ theme }) => ({
+    textAlign: 'center',
+}));
 
 export default function Landing() {
-    const router = useNavigate();
-    
-    // --- THEME STATE ---
-    // Check system preference or default to dark
-    const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
-    const [mode, setMode] = useState(prefersDarkMode ? 'dark' : 'light');
+    const navigate = useNavigate();
+    const theme = useTheme();
+    const { mode, toggleColorMode } = useThemeContext();
 
-    const toggleColorMode = () => {
-        setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
-    };
-
-    // Create Theme dynamically
-    const theme = useMemo(
-        () =>
-            createTheme({
-                palette: {
-                    mode,
-                    ...(mode === 'light'
-                        ? {
-                              // Light Mode Palette
-                              text: { primary: '#2d3436', secondary: '#636e72' },
-                              divider: 'rgba(0, 0, 0, 0.06)',
-                              background: { paper: '#ffffff' }
-                          }
-                        : {
-                              // Dark Mode Palette
-                              text: { primary: '#ffffff', secondary: '#b2bec3' },
-                              divider: 'rgba(255, 255, 255, 0.05)',
-                              background: { paper: '#1e1e1e' }
-                          }),
-                },
-                typography: {
-                    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-                }
-            }),
-        [mode],
-    );
+    const features = [
+        {
+            icon: <VideocamIcon sx={{ color: 'white', fontSize: 24 }} />,
+            title: 'HD Video Calls',
+            desc: 'Crystal-clear video & audio powered by WebRTC peer-to-peer technology.',
+            gradient: 'linear-gradient(135deg, #6366f1, #818cf8)',
+        },
+        {
+            icon: <SecurityIcon sx={{ color: 'white', fontSize: 24 }} />,
+            title: 'End-to-End Secure',
+            desc: 'Your conversations stay private with encrypted, secure connections.',
+            gradient: 'linear-gradient(135deg, #06b6d4, #22d3ee)',
+        },
+        {
+            icon: <SpeedIcon sx={{ color: 'white', fontSize: 24 }} />,
+            title: 'Zero Latency',
+            desc: 'Optimized signaling for instant connections with no setup delay.',
+            gradient: 'linear-gradient(135deg, #8b5cf6, #a78bfa)',
+        },
+        {
+            icon: <DevicesIcon sx={{ color: 'white', fontSize: 24 }} />,
+            title: 'Any Device',
+            desc: 'Works seamlessly on desktop, tablet, and mobile browsers.',
+            gradient: 'linear-gradient(135deg, #0ea5e9, #38bdf8)',
+        },
+    ];
 
     return (
-        <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <PageWrapper>
-                <Navbar>
-                    <Logo onClick={() => router('/')}>
-                        <VideoCallIcon /> Dhamsa Call
-                    </Logo>
-                    
-                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                        {/* THEME TOGGLE BUTTON */}
-                        <IconButton onClick={toggleColorMode} sx={{ color: 'text.primary' }}>
-                            {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
-                        </IconButton>
+        <PageWrapper>
+            {/* Background Glow Orbs */}
+            <GlowOrb size="600px" top="-15%" right="-10%" color="rgba(99,102,241,0.1)" delay="0s" />
+            <GlowOrb size="400px" top="60%" left="-5%" color="rgba(6,182,212,0.08)" delay="3s" />
 
-                        <Button 
-                            onClick={() => router("/guest")} 
-                            sx={{ color: 'text.primary', textTransform: 'none', display: { xs: 'none', sm: 'block' }, fontWeight: 500 }}
-                        >
+            {/* ── NAVBAR ── */}
+            <Navbar>
+                <Logo>
+                    <VideocamIcon sx={{ fontSize: 28 }} /> Dhamsa Call
+                </Logo>
+                <Box sx={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <IconButton onClick={toggleColorMode} size="small"
+                        sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}>
+                        {mode === 'dark' ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
+                    </IconButton>
+                    <Button onClick={() => navigate("/guest")}
+                        sx={{ color: 'text.secondary', display: { xs: 'none', sm: 'inline-flex' }, '&:hover': { color: 'primary.main' } }}>
+                        Guest Join
+                    </Button>
+                    <Button onClick={() => navigate("/auth")}
+                        sx={{ color: 'text.primary' }}>
+                        Sign In
+                    </Button>
+                    <Button variant="contained" onClick={() => navigate("/auth")}
+                        sx={{ borderRadius: '50px', px: 3 }}>
+                        Get Started
+                    </Button>
+                </Box>
+            </Navbar>
+
+            {/* ── HERO ── */}
+            <HeroSection>
+                <MeshSphere />
+                <HeroContent>
+                    <Typography variant="h1" sx={{
+                        fontSize: { xs: '2.8rem', sm: '3.5rem', md: '4.5rem' },
+                        lineHeight: 1.08,
+                        mb: 3,
+                    }}>
+                        Connect with <br />
+                        <GradientText>Anyone, Instantly.</GradientText>
+                    </Typography>
+
+                    <Typography variant="h6" sx={{
+                        color: 'text.secondary',
+                        fontWeight: 400,
+                        maxWidth: '560px',
+                        mx: 'auto',
+                        mb: 5,
+                        lineHeight: 1.7,
+                        fontSize: { xs: '1rem', md: '1.15rem' },
+                    }}>
+                        High-quality video meetings for everyone. Free, secure,
+                        and ready in seconds — no downloads required.
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <Button variant="contained" size="large"
+                            onClick={() => navigate("/auth")}
+                            endIcon={<ArrowForwardIcon />}
+                            sx={{ borderRadius: '50px', px: 4, py: 1.5, fontSize: '1.05rem' }}>
+                            Start a Meeting
+                        </Button>
+                        <Button variant="outlined" size="large"
+                            onClick={() => navigate("/guest")}
+                            sx={{ borderRadius: '50px', px: 4, py: 1.5, fontSize: '1.05rem' }}>
                             Join as Guest
                         </Button>
-                        <Button 
-                            onClick={() => router("/auth")} 
-                            sx={{ color: 'text.primary', textTransform: 'none', fontWeight: 500 }}
-                        >
-                            Login
-                        </Button>
-                        <Button 
-                            variant="outlined" 
-                            onClick={() => router("/auth")}
-                            sx={{ 
-                                color: '#FF6A88', 
-                                borderColor: '#FF6A88', 
-                                borderRadius: '20px', 
-                                textTransform: 'none',
-                                fontWeight: 600,
-                                '&:hover': { borderColor: '#FF9A8B', background: 'rgba(255, 106, 136, 0.1)' }
-                            }}
-                        >
-                            Register
-                        </Button>
-                    </div>
-                </Navbar>
+                    </Box>
 
-                <HeroSection maxWidth="lg">
-                    <HeroText>
-                        <Typography variant="h1" sx={{ fontWeight: 800, fontSize: { xs: '3rem', md: '4.5rem' }, lineHeight: 1.1, mb: 2, color: 'text.primary' }}>
-                            Connect with your <br />
-                            <span style={{ 
-                                background: 'linear-gradient(45deg, #FF9A8B, #FF6A88)',
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent',
-                            }}>
-                                Loved Ones.
-                            </span>
-                        </Typography>
-                        
-                        <Typography variant="h5" sx={{ color: 'text.secondary', mb: 4, maxWidth: '600px', fontSize: { xs: '1rem', md: '1.25rem' }, lineHeight: 1.6 }}>
-                            High-quality video conferencing that bridges the distance. 
-                            Free, secure, and available on all devices.
-                        </Typography>
+                    <StatsBar>
+                        <StatItem>
+                            <Typography variant="h4" fontWeight="800" color="primary">10K+</Typography>
+                            <Typography variant="body2" color="text.secondary">Active Users</Typography>
+                        </StatItem>
+                        <StatItem>
+                            <Typography variant="h4" fontWeight="800" sx={{ background: 'linear-gradient(135deg, #06b6d4, #22d3ee)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>99.9%</Typography>
+                            <Typography variant="body2" color="text.secondary">Uptime</Typography>
+                        </StatItem>
+                        <StatItem>
+                            <Typography variant="h4" fontWeight="800" color="primary">50+</Typography>
+                            <Typography variant="body2" color="text.secondary">Countries</Typography>
+                        </StatItem>
+                    </StatsBar>
+                </HeroContent>
+            </HeroSection>
 
-                        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: { xs: 'center', md: 'flex-start' } }}>
-                            <GradientButton onClick={() => router("/auth")}>
-                                Get Started
-                            </GradientButton>
-                            <Button 
-                                variant="text" 
-                                onClick={() => router("/guest")}
-                                sx={{ color: 'text.primary', fontSize: '1.1rem', textTransform: 'none' }}
-                            >
-                                Try as Guest →
-                            </Button>
-                        </div>
-                    </HeroText>
+            {/* ── FEATURES ── */}
+            <Container maxWidth="lg" sx={{ py: 10, position: 'relative', zIndex: 1 }}>
+                <Typography variant="h3" align="center" sx={{ mb: 1 }}>
+                    Why <GradientText>Dhamsa Call</GradientText>?
+                </Typography>
+                <Typography variant="body1" align="center" color="text.secondary" sx={{ mb: 6, maxWidth: '500px', mx: 'auto' }}>
+                    Everything you need for seamless video conferencing, built with modern technology.
+                </Typography>
 
-                    <HeroImageWrapper>
-                        <FloatingImage 
-                            src="https://images.unsplash.com/photo-1612831455359-970e23a1e4e9?q=80&w=1025&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
-                            alt="Video Call Illustration" 
-                        />
-                    </HeroImageWrapper>
-                </HeroSection>
+                <Grid container spacing={3}>
+                    {features.map((f, i) => (
+                        <Grid item xs={12} sm={6} md={3} key={i}>
+                            <FeatureCard elevation={0} sx={{ animation: `${fadeUp} 0.6s ease-out ${0.1 * i}s backwards` }}>
+                                <IconBox gradient={f.gradient}>
+                                    {f.icon}
+                                </IconBox>
+                                <Typography variant="h6" sx={{ mb: 1 }}>{f.title}</Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>{f.desc}</Typography>
+                            </FeatureCard>
+                        </Grid>
+                    ))}
+                </Grid>
+            </Container>
 
-                {/* Features Section */}
-
-
-                <Box sx={{ textAlign: 'center', py: 4, borderTop: `1px solid ${theme.palette.divider}`, color: 'text.secondary' }}>
-                    <Typography variant="body2">© 2026 Dhamsa Call. All rights reserved.</Typography>
-                </Box>
-
-            </PageWrapper>
-        </ThemeProvider>
+            {/* ── FOOTER ── */}
+            <Box sx={{
+                textAlign: 'center',
+                py: 4,
+                borderTop: `1px solid ${theme.palette.divider}`,
+                position: 'relative',
+                zIndex: 1,
+            }}>
+                <Typography variant="body2" color="text.secondary">
+                    © 2026 Dhamsa Call. Built with ❤️ • Secure & Encrypted
+                </Typography>
+            </Box>
+        </PageWrapper>
     );
 }

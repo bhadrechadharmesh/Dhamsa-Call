@@ -1,11 +1,10 @@
 import React, { useContext, useState, useEffect } from 'react';
-import withAuth from '../utils/withAuth';
 import { useNavigate } from 'react-router-dom';
-import { 
-    Button, IconButton, TextField, Box, Typography, Grid, Paper, Avatar, Divider, Tooltip 
+import {
+    Button, IconButton, TextField, Box, Typography, Grid, Paper, Avatar, Tooltip, InputAdornment
 } from '@mui/material';
-import { styled, alpha } from '@mui/material/styles';
-import { useThemeContext } from '../contexts/ThemeContext'; // Import global theme hook
+import { styled, alpha, keyframes, useTheme } from '@mui/material/styles';
+import { useThemeContext } from '../contexts/ThemeContext';
 import { AuthContext } from '../contexts/AuthContext';
 
 // Icons
@@ -13,13 +12,19 @@ import AddBoxIcon from '@mui/icons-material/AddBox';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
 import HistoryIcon from '@mui/icons-material/History';
 import LogoutIcon from '@mui/icons-material/Logout';
-import Brightness4Icon from '@mui/icons-material/Brightness4';
-import Brightness7Icon from '@mui/icons-material/Brightness7';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import LightModeIcon from '@mui/icons-material/LightMode';
 import VideocamIcon from '@mui/icons-material/Videocam';
-import SettingsIcon from '@mui/icons-material/Settings';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import SearchIcon from '@mui/icons-material/Search';
+
+const fadeUp = keyframes`
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
 
 // --- STYLED COMPONENTS ---
-
 const DashboardLayout = styled('div')(({ theme }) => ({
     display: 'flex',
     minHeight: '100vh',
@@ -27,96 +32,118 @@ const DashboardLayout = styled('div')(({ theme }) => ({
     transition: 'background-color 0.3s',
 }));
 
-// Sidebar
 const Sidebar = styled('div')(({ theme }) => ({
-    width: '80px',
+    width: '72px',
     borderRight: `1px solid ${theme.palette.divider}`,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    padding: '30px 0',
-    gap: '24px',
-    backgroundColor: theme.palette.mode === 'dark' ? alpha('#fff', 0.02) : '#fff',
+    padding: '20px 0',
+    gap: '8px',
+    backgroundColor: theme.palette.mode === 'dark'
+        ? 'rgba(17, 24, 39, 0.5)'
+        : 'rgba(255, 255, 255, 0.8)',
+    backdropFilter: 'blur(12px)',
     zIndex: 10,
-    '@media (max-width: 600px)': {
-        display: 'none' // Hide on mobile, move to bottom nav ideally
+    '@media (max-width: 768px)': {
+        display: 'none'
     }
 }));
 
 const NavItem = styled(IconButton)(({ theme, active }) => ({
-    borderRadius: '16px',
+    borderRadius: '14px',
     padding: '12px',
-    color: active ? '#FF6A88' : theme.palette.text.secondary,
-    backgroundColor: active ? alpha('#FF6A88', 0.1) : 'transparent',
-    transition: 'all 0.2s',
+    color: active ? '#6366f1' : theme.palette.text.secondary,
+    backgroundColor: active ? alpha('#6366f1', 0.1) : 'transparent',
+    transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)',
     '&:hover': {
-        backgroundColor: alpha(theme.palette.text.primary, 0.05),
+        backgroundColor: alpha('#6366f1', 0.08),
+        color: '#6366f1',
         transform: 'scale(1.05)',
     }
 }));
 
-// Main Content
 const MainContent = styled('div')({
     flex: 1,
-    padding: '40px',
+    padding: '32px 40px',
     display: 'flex',
     flexDirection: 'column',
     overflowY: 'auto',
-    maxWidth: '1600px',
-    margin: '0 auto',
-    '@media (max-width: 600px)': {
-        padding: '20px'
+    '@media (max-width: 768px)': {
+        padding: '20px 16px'
     }
 });
 
 const ActionCard = styled(Paper)(({ theme }) => ({
-    padding: '30px',
-    borderRadius: '24px',
+    padding: '28px',
+    borderRadius: '20px',
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    height: '240px',
+    height: '220px',
     cursor: 'pointer',
     position: 'relative',
     overflow: 'hidden',
     border: `1px solid ${theme.palette.divider}`,
-    transition: 'all 0.3s ease',
-    background: theme.palette.background.paper,
-    
+    background: theme.palette.mode === 'dark'
+        ? 'rgba(17, 24, 39, 0.5)'
+        : 'rgba(255, 255, 255, 0.7)',
+    backdropFilter: 'blur(8px)',
+    transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)',
     '&:hover': {
-        transform: 'translateY(-8px)',
-        boxShadow: theme.palette.mode === 'dark' 
-            ? '0 10px 40px rgba(0,0,0,0.5)' 
-            : '0 10px 40px rgba(0,0,0,0.1)',
-        borderColor: '#FF6A88',
-        '& .icon-bg': {
-            transform: 'scale(1.2) rotate(10deg)',
-            opacity: 0.2
+        transform: 'translateY(-6px)',
+        borderColor: 'rgba(99,102,241,0.3)',
+        boxShadow: theme.palette.mode === 'dark'
+            ? '0 16px 40px rgba(0,0,0,0.4), 0 0 20px rgba(99,102,241,0.06)'
+            : '0 16px 40px rgba(0,0,0,0.08)',
+        '& .card-icon-bg': {
+            transform: 'scale(1.15) rotate(5deg)',
+            opacity: 0.15,
         }
     }
 }));
 
-const IconBackground = styled('div')({
+const CardIconBg = styled('div')({
     position: 'absolute',
-    bottom: '-20px',
-    right: '-20px',
-    fontSize: '180px',
-    opacity: 0.05,
+    bottom: '-15px',
+    right: '-15px',
+    fontSize: '160px',
+    opacity: 0.04,
     transition: 'all 0.4s ease',
     pointerEvents: 'none',
 });
 
+const IconBox = styled('div')(({ gradient }) => ({
+    width: '44px',
+    height: '44px',
+    borderRadius: '12px',
+    background: gradient || 'linear-gradient(135deg, #6366f1, #06b6d4)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 4px 12px rgba(99,102,241,0.25)',
+    flexShrink: 0,
+}));
+
+const TimeCard = styled(Paper)(({ theme }) => ({
+    padding: '20px 28px',
+    borderRadius: '16px',
+    background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
+    color: 'white',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+}));
+
 function HomeComponent() {
     const navigate = useNavigate();
+    const theme = useTheme();
     const [meetingCode, setMeetingCode] = useState("");
     const [dateTime, setDateTime] = useState(new Date());
-    
-    // Use Global Contexts
-    const { addToUserHistory, userData } = useContext(AuthContext);
+
+    const { addToUserHistory, handleLogout } = useContext(AuthContext);
     const { mode, toggleColorMode } = useThemeContext();
 
-    // Clock effect
     useEffect(() => {
         const timer = setInterval(() => setDateTime(new Date()), 1000);
         return () => clearInterval(timer);
@@ -135,167 +162,151 @@ function HomeComponent() {
         navigate(`/meet/${code}`);
     }
 
-    // Format Date/Time
     const timeString = dateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const dateString = dateTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
 
     return (
         <DashboardLayout>
-            {/* --- SIDEBAR NAVIGATION --- */}
+            {/* ── SIDEBAR ── */}
             <Sidebar>
-                <Avatar sx={{ bgcolor: 'linear-gradient(45deg, #FF6A88, #FF9A8B)', width: 40, height: 40, mb: 2 }}>
+                <Avatar sx={{
+                    width: 36, height: 36, mb: 2,
+                    background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
+                    fontSize: '0.9rem', fontWeight: 700,
+                }}>
                     D
                 </Avatar>
-                
+
                 <Tooltip title="Home" placement="right">
-                    <NavItem active={true} onClick={() => {}}>
-                        <VideocamIcon />
-                    </NavItem>
+                    <NavItem active={true}><VideocamIcon fontSize="small" /></NavItem>
                 </Tooltip>
-
                 <Tooltip title="History" placement="right">
-                    <NavItem onClick={() => navigate("/history")}>
-                        <HistoryIcon />
-                    </NavItem>
+                    <NavItem onClick={() => navigate("/history")}><HistoryIcon fontSize="small" /></NavItem>
                 </Tooltip>
 
-                <div style={{ flex: 1 }} /> {/* Spacer */}
+                <Box sx={{ flex: 1 }} />
 
                 <Tooltip title="Toggle Theme" placement="right">
                     <NavItem onClick={toggleColorMode}>
-                        {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+                        {mode === 'dark' ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
                     </NavItem>
                 </Tooltip>
-                
-                <Tooltip title="Logout" placement="right">
-                    <NavItem onClick={() => { localStorage.removeItem("token"); navigate("/auth"); }}>
-                        <LogoutIcon />
-                    </NavItem>
+                <Tooltip title="Sign Out" placement="right">
+                    <NavItem onClick={handleLogout}><LogoutIcon fontSize="small" /></NavItem>
                 </Tooltip>
             </Sidebar>
 
-            {/* --- MAIN CONTENT --- */}
+            {/* ── MAIN ── */}
             <MainContent>
-                
-                {/* Header Section */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 6 }}>
-                    <div>
-                        <Typography variant="h4" fontWeight="800">
+                {/* Header */}
+                <Box sx={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                    mb: 4, animation: `${fadeUp} 0.5s ease-out`,
+                }}>
+                    <Box>
+                        <Typography variant="h4" fontWeight="800" sx={{ mb: 0.5 }}>
                             Dashboard
                         </Typography>
-                        <Typography variant="body1" color="text.secondary">
-                            Welcome back, let's connect.
-                        </Typography>
-                    </div>
-                    
-                    {/* Clock Display */}
-                    <Box sx={{ textAlign: 'right', display: { xs: 'none', md: 'block' } }}>
-                        <Typography variant="h4" fontWeight="600" color="primary">
-                            {timeString}
-                        </Typography>
                         <Typography variant="body2" color="text.secondary">
-                            {dateString}
+                            Welcome back — let's connect with someone today.
                         </Typography>
                     </Box>
                 </Box>
 
-                {/* Action Grid */}
-                <Grid container spacing={4}>
-                    
-                    {/* Card 1: New Meeting */}
-                    <Grid item xs={12} md={4}>
+                {/* Time Card */}
+                <TimeCard elevation={0} sx={{
+                    mb: 4, animation: `${fadeUp} 0.5s ease-out 0.1s backwards`,
+                }}>
+                    <AccessTimeIcon sx={{ fontSize: 36, opacity: 0.8 }} />
+                    <Box>
+                        <Typography variant="h4" fontWeight="700">{timeString}</Typography>
+                        <Typography variant="body2" sx={{ opacity: 0.8 }}>{dateString}</Typography>
+                    </Box>
+                </TimeCard>
+
+                {/* Action Cards */}
+                <Grid container spacing={3} sx={{ animation: `${fadeUp} 0.5s ease-out 0.2s backwards` }}>
+                    {/* New Meeting */}
+                    <Grid item xs={12} sm={6} md={4}>
                         <ActionCard onClick={handleCreateMeeting} elevation={0}>
-                            <Box sx={{ 
-                                bgcolor: '#FF6A88', 
-                                width: 50, height: 50, borderRadius: '14px', 
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 
-                            }}>
-                                <AddBoxIcon sx={{ color: 'white' }} />
-                            </Box>
-                            <div>
-                                <Typography variant="h5" fontWeight="bold">New Meeting</Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                    Create a new room and invite others instantly.
+                            <IconBox gradient="linear-gradient(135deg, #6366f1, #818cf8)">
+                                <AddBoxIcon sx={{ color: 'white', fontSize: 22 }} />
+                            </IconBox>
+                            <Box>
+                                <Typography variant="h6" fontWeight="700" sx={{ mb: 0.5 }}>New Meeting</Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    Create a room and invite others instantly.
                                 </Typography>
-                            </div>
-                            <IconBackground className="icon-bg">
+                            </Box>
+                            <CardIconBg className="card-icon-bg">
                                 <VideocamIcon sx={{ fontSize: 'inherit' }} />
-                            </IconBackground>
+                            </CardIconBg>
                         </ActionCard>
                     </Grid>
 
-                    {/* Card 2: Join Meeting */}
-                    <Grid item xs={12} md={5}>
+                    {/* Join Meeting */}
+                    <Grid item xs={12} sm={6} md={5}>
                         <ActionCard sx={{ cursor: 'default' }} elevation={0}>
-                            <Box sx={{ 
-                                bgcolor: mode === 'dark' ? '#333' : '#eee', 
-                                width: 50, height: 50, borderRadius: '14px', 
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 
-                            }}>
-                                <KeyboardIcon sx={{ color: mode === 'dark' ? 'white' : '#555' }} />
-                            </Box>
-                            
+                            <IconBox gradient="linear-gradient(135deg, #06b6d4, #22d3ee)">
+                                <KeyboardIcon sx={{ color: 'white', fontSize: 22 }} />
+                            </IconBox>
                             <Box sx={{ width: '100%' }}>
-                                <Typography variant="h5" fontWeight="bold">Join Meeting</Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                    Enter code to join an existing call.
-                                </Typography>
-                                
-                                <Box sx={{ display: 'flex', gap: 2 }}>
-                                    <TextField 
-                                        fullWidth 
-                                        placeholder="abc-def-ghi" 
-                                        variant="outlined"
-                                        size="small"
+                                <Typography variant="h6" fontWeight="700" sx={{ mb: 1 }}>Join Meeting</Typography>
+                                <Box sx={{ display: 'flex', gap: 1.5 }}>
+                                    <TextField
+                                        fullWidth placeholder="Enter meeting code"
+                                        variant="outlined" size="small"
                                         value={meetingCode}
                                         onChange={e => setMeetingCode(e.target.value)}
-                                        sx={{ 
-                                            '& .MuiOutlinedInput-root': { borderRadius: '10px' } 
-                                        }}
+                                        onKeyDown={e => e.key === 'Enter' && handleJoinVideoCall()}
                                     />
-                                    <Button 
-                                        variant="contained" 
-                                        onClick={handleJoinVideoCall}
+                                    <Button variant="contained" onClick={handleJoinVideoCall}
                                         disabled={!meetingCode}
-                                        sx={{ borderRadius: '10px', px: 3, background: '#FF6A88', '&:hover': { background: '#ff4d73' } }}
-                                    >
-                                        Join
+                                        sx={{ px: 3, minWidth: 'auto' }}>
+                                        <ArrowForwardIcon />
                                     </Button>
                                 </Box>
                             </Box>
-                            <IconBackground className="icon-bg">
-                                <KeyboardIcon sx={{ fontSize: 'inherit' }} />
-                            </IconBackground>
+                            <CardIconBg className="card-icon-bg">
+                                <SearchIcon sx={{ fontSize: 'inherit' }} />
+                            </CardIconBg>
                         </ActionCard>
                     </Grid>
 
-                    {/* Card 3: History Teaser */}
-                    <Grid item xs={12} md={3}>
-                        <ActionCard onClick={() => navigate("/history")} elevation={0} sx={{ height: '240px', background: 'linear-gradient(135deg, #FF9A8B 0%, #FF6A88 100%)', color: 'white', border: 'none' }}>
-                             <Box sx={{ 
-                                bgcolor: 'rgba(255,255,255,0.2)', 
-                                width: 50, height: 50, borderRadius: '14px', 
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 
+                    {/* History */}
+                    <Grid item xs={12} sm={12} md={3}>
+                        <ActionCard onClick={() => navigate("/history")} elevation={0}
+                            sx={{
+                                background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
+                                color: 'white', border: 'none',
+                                '&:hover': {
+                                    boxShadow: '0 16px 40px rgba(99,102,241,0.35)',
+                                    borderColor: 'transparent',
+                                }
                             }}>
-                                <HistoryIcon sx={{ color: 'white' }} />
+                            <Box sx={{
+                                width: 44, height: 44, borderRadius: '12px',
+                                bgcolor: 'rgba(255,255,255,0.2)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                                <HistoryIcon sx={{ color: 'white', fontSize: 22 }} />
                             </Box>
-                            <div>
-                                <Typography variant="h5" fontWeight="bold">History</Typography>
-                                <Typography variant="body2" sx={{ mt: 1, opacity: 0.9 }}>
-                                    View your past meetings and recordings.
+                            <Box>
+                                <Typography variant="h6" fontWeight="700" sx={{ mb: 0.5 }}>History</Typography>
+                                <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                                    View past meetings & recordings.
                                 </Typography>
-                            </div>
+                            </Box>
                         </ActionCard>
                     </Grid>
                 </Grid>
 
-                {/* Bottom Section (Optional Illustration or Recent) */}
-                <Box sx={{ mt: 6, opacity: 0.6, textAlign: 'center' }}>
-                     <Typography variant="caption">
+                {/* Footer */}
+                <Box sx={{ mt: 'auto', pt: 4, opacity: 0.5, textAlign: 'center' }}>
+                    <Typography variant="caption">
                         Dhamsa Call v1.0 • Secure & Encrypted
-                     </Typography>
+                    </Typography>
                 </Box>
-
             </MainContent>
         </DashboardLayout>
     );
